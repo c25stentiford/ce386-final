@@ -5,9 +5,9 @@ import sys
 import time
 import torch
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, Pipeline, pipeline
-from typing import List
+from typing import Dict
 
-def record_audio(duration_seconds: int = 1) -> npt.NDArray:
+def record_audio(duration_seconds: float = 0.75) -> npt.NDArray:
     """Record duration_seconds of audio from default microphone.
     Return a single channel numpy array."""
     sample_rate = 16000  # Hz
@@ -55,8 +55,12 @@ if __name__ == "__main__":
     print("Done")
 
     while True:
+        #print("Recording")
         audio = record_audio()
-        speech: List[str] = pipe(audio)
-        for i in speech:
-            if "computer" in i.lower():
-                print("Found")
+        #print("Transcribing")
+        speech: Dict[str,str] = pipe(audio)
+        #print(speech)
+        if "computer" in speech["text"].lower():
+                print("Recording prompt")
+                speech: Dict[str,str] = pipe(record_audio(5))
+                print(speech["text"])
