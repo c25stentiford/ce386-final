@@ -1,0 +1,62 @@
+import sounddevice as sd
+import numpy as np
+import numpy.typing as npt
+import sys
+import time
+import torch
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, Pipeline, pipeline
+from typing import List
+
+def record_audio(duration_seconds: int = 1) -> npt.NDArray:
+    """Record duration_seconds of audio from default microphone.
+    Return a single channel numpy array."""
+    sample_rate = 16000  # Hz
+    samples = int(duration_seconds * sample_rate)
+    # Will use default microphone; on Jetson this is likely a USB WebCam
+    audio = sd.rec(samples, samplerate=sample_rate, channels=1, dtype=np.float32)
+    # Blocks until recording complete
+    sd.wait()
+    # Model expects single axis
+    return np.squeeze(audio, axis=1)
+
+def build_pipeline(model_id: str, torch_dtype: torch.dtype, device: str) -> Pipeline:
+    """Creates a Hugging Face automatic-speech-recognition pipeline on the given device."""
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        model_id,
+        torch_dtype=torch_dtype,
+        low_cpu_mem_usage=True,
+        use_safetensors=True,
+    )
+    model.to(device)
+    processor = AutoProcessor.from_pretrained(model_id)
+    pipe = pipeline(
+        "automatic-speech-recognition",
+        model=model,
+        tokenizer=processor.tokenizer,
+        feature_extractor=processor.feature_extractor,
+        max_new_tokens=128,
+        torch_dtype=torch_dtype,
+        device=device,
+    )
+    return pipe
+
+if __name__ == "__main__":
+    # Get model as argument, default to "distil-whisper/distil-medium.en" if not given
+    model_id = sys.argv[1] if len(sys.argv) > 1 else "distil-whisper/distil-medium.en"
+    print("Using model_id {model_id}")
+    # Use GPU if available
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+    print(f"Using device {device}.")
+
+    print("Building model pipeline...")
+    pipe = build_pipeline(model_id, torch_dtype, device)
+    print(type(pipe))
+    print("Done")
+
+    while True:
+        audio = record_audio()
+        speech: List[str] = pipe(audio)
+        for i in speech:
+            if "computer" in i.lower():
+                print("Found")
