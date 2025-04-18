@@ -2,12 +2,11 @@ import sounddevice as sd
 import numpy as np
 import numpy.typing as npt
 import sys
-import time
 import torch
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, Pipeline, pipeline
 from typing import Dict
 
-def record_audio(duration_seconds: float = 0.75) -> npt.NDArray:
+def record_audio(duration_seconds: float = 0.75) -> npt.NDArray[np.float32]:
     """Record duration_seconds of audio from default microphone.
     Return a single channel numpy array."""
     sample_rate = 16000  # Hz
@@ -62,5 +61,5 @@ if __name__ == "__main__":
         #print(speech)
         if "computer" in speech["text"].lower():
                 print("Recording prompt")
-                speech: Dict[str,str] = pipe(record_audio(5))
+                speech = pipe(record_audio(5))
                 print(speech["text"])
