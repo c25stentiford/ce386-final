@@ -4,11 +4,7 @@ RUN apt update && \
     apt install -y --no-install-recommends libportaudiocpp0 libportaudio2 && \
     apt clean
 RUN pip install --upgrade --no-cache-dir pip && \
-    pip install --no-cache-dir transformers==4.49.0 accelerate==1.5.2 sounddevice && \
-    pip install --no-cache-dir ollama pydantic
-#RUN apt update && \
-#    apt install -y net-tools iputils-ping iproute2 && \
-#    apt clean
+    pip install --no-cache-dir transformers==4.49.0 accelerate==1.5.2 sounddevice
 COPY speech_recognition.py .
 ENV HF_HOME="/huggingface/"
 ENTRYPOINT ["python", "speech_recognition.py"]
