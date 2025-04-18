@@ -3,14 +3,15 @@
 from ollama import Client
 from pydantic import BaseModel
 
-LLM_MODEL: str = "deepseek-r1:14b"  # Change this to be the model you want
+LLM_MODEL: str = "gemma3:27b"  # Change this to be the model you want
 client: Client = Client(
-    host="http://localhost:11434"  # Change this to be the URL of your LLM
+    host="http://ai.dfec.xyz:11434"  # Change this to be the URL of your LLM
 )
 
 class Place(BaseModel):
     place: str
     point: bool
+    error: str
 
 def llm_parse_for_wttr(prompt: str):
     response = client.chat(
@@ -18,24 +19,37 @@ def llm_parse_for_wttr(prompt: str):
             {
                 "role": "system",
                 "content": '''
-                Your purpose is to extract the intended location from the user's weather request. Take your time to ensure correct response.
-                The `point` field of the JSON output specifies if the location is a specific point, such as:
-                "Changi Airport", "Hakata Station", "the Eiffel Tower", etc. Places which are NOT
-                points are things like "Bangkok", "Leavenworth County", "Guam", "Lichtenstein", "Hokkaido Prefecture", 
-                "Chatuchak District", "Lopburi Province", "Buckley Space Force Base", and "Wichita, Kansas".
-                Otherwise, if the given location is a city, administrative division, or other geograhic locality, set `point` to false.
-                Ensure it is in a concise format, such as:
-                "Paris", "Denver, Colorado", "Taoyuan, Taiwan", or "New York City".
-                If the given location appears to be a three-letter airport code, leave it intact and set `point` to false.
+                Your purpose is to extract the intended location from the user's weather request.
+                Take your time to ensure correct response. Place the extracted location into `place` as a string.
+                
+                The `point` field of the JSON output specifies if the location is a specific point, such as airports,
+                train stations, landmarks, named spots, or anything else along those lines.
+                In that case, set `point` to true.
+                
+                Places which are NOT points are things like cities, counties, states, countries, provinces, regions, military bases,
+                departments, cantons, prefectures, arrondissements, boroughs, communes, districts, towns, 
+                Census-Designated Places in the U.S., villages, tribal reservations, neighborhoods. In any of these
+                cases or similar, set `point` to false.
+                
+                Ensure the location is in a concise format, such as:
+                "Paris", "Denver, Colorado", "Taoyuan, Taiwan", "New York City", "Osaka International Airport" or "Tokyo Skytree".
+                
+                If the given location appears to be a three-letter airport code, leave it intact.
                 Examples of airport codes include: "FUK", "MUC", etc.
+                
+                If for whatever reason you are unable to comply with instructions above, explain
+                yourself in a brief manner using `error`. Otherwise, set `error` to a blank string.
                 '''
             },
             {"role": "user", "content": prompt},
         ],
-        model="deepseek-r1:14b",
+        model=LLM_MODEL,
         format=Place.model_json_schema()
     )        
     place = Place.model_validate_json(response.message.content)
+    
+    # if len(place.error) > 0:
+    print(place.error)
     
     if place.point and not (place.place.upper() == place.place and len(place.place) == 3):
         place.place = "~" + place.place
@@ -51,7 +65,8 @@ test_cases = [
     {"input": "Get the weather at MCI.", "expected": "MCI"},
     {"input": "What's the weather at DMK?", "expected": "DMK"},
     {"input": "Tell me the weather in Lansing, Kansas.", "expected": "Lansing,+Kansas"},
-    {"input": "What's the weather in Fukuoka Prefecture?", "expected": "Fukuoka+Prefecture"}
+    {"input": "What's the weather in Fukuoka Prefecture?", "expected": "Fukuoka+Prefecture"},
+    {"input": "What's the weather at Kokura Station?", "expected": "~Kokura+Station"}
 ]
 
 def run_tests(test_cases: list[dict[str, str]]):
