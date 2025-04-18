@@ -51,7 +51,6 @@ client: Client = Client(
 class Place(BaseModel):
     place: str
     point: bool
-    error: str
 
 def llm_parse_for_wttr(prompt: str):
     response = client.chat(
@@ -67,10 +66,10 @@ def llm_parse_for_wttr(prompt: str):
                 train stations, landmarks, named spots, or anything else along those lines.
                 In that case, set `point` to true.
                 
-                Places which are NOT points are things like cities, counties, states, countries, provinces, regions, military bases,
-                departments, cantons, prefectures, arrondissements, boroughs, communes, districts, towns, 
-                Census-Designated Places in the U.S., villages, tribal reservations, neighborhoods. In any of these
-                cases or similar, set `point` to false.
+                Places which are NOT points are things like cities, counties, states, countries, provinces, regions,
+                military bases, departments, cantons, prefectures, arrondissements, boroughs, communes, districts, towns, 
+                Census-Designated Places in the U.S., unincorporated communities, villages, tribal reservations, and neighborhoods.
+                In any of these cases or similar, set `point` to false.
                 
                 Ensure the location is in a concise format, such as:
                 "Paris", "Denver, Colorado", "Taoyuan, Taiwan", "New York City", "Osaka International Airport" or "Tokyo Skytree".
@@ -79,10 +78,7 @@ def llm_parse_for_wttr(prompt: str):
                 Examples of airport codes include: "FUK", "MUC", "BKK", "SFO", and "KHH".
                 
                 The transcription model may add extraneous punctuation into spoken airport codes. For instance, 
-                "BKK" is transcribed as "BK.K." Look for occurences of such errors and correct them.               
-                
-                If for whatever reason you are unable to comply with instructions above, explain
-                yourself in a brief manner using `error`. Otherwise, set `error` to a blank string.
+                "BKK" is sometimes transcribed as "BK.K." Look for occurences of similar errors and correct them.
                 '''
             },
             {"role": "user", "content": prompt},
@@ -91,9 +87,6 @@ def llm_parse_for_wttr(prompt: str):
         format=Place.model_json_schema()
     )        
     place = Place.model_validate_json(response.message.content)
-    
-    # if len(place.error) > 0:
-    print(place.error)
     
     if place.point and not (place.place.upper() == place.place and len(place.place) == 3):
         place.place = "~" + place.place
