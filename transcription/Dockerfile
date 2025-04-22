@@ -6,9 +6,11 @@ RUN apt update && \
 RUN pip install --upgrade --no-cache-dir pip && \
     pip install --no-cache-dir transformers==4.49.0 accelerate==1.5.2 sounddevice && \
     pip install --no-cache-dir ollama pydantic
+RUN apt install -y --no-install-recommends gpiod && \
+    apt clean
 #RUN apt update && \
 #    apt install -y net-tools iputils-ping iproute2 && \
 #    apt clean
-COPY speech_recognition.py .
+COPY project.py .
 ENV HF_HOME="/huggingface/"
-ENTRYPOINT ["python", "speech_recognition.py"]
+ENTRYPOINT ["python", "project.py"]
