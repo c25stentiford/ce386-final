@@ -11,6 +11,7 @@ import requests
 
 LLM_MODEL: str = "gemma3:27b"  # Change this to be the model you want
 
+
 def record_audio(duration_seconds: float = 0.75) -> npt.NDArray[np.float32]:
     """Record duration_seconds of audio from default microphone.
     Return a single channel numpy array."""
@@ -22,6 +23,7 @@ def record_audio(duration_seconds: float = 0.75) -> npt.NDArray[np.float32]:
     sd.wait()
     # Model expects single axis
     return np.squeeze(audio, axis=1)
+
 
 def build_pipeline(model_id: str, torch_dtype: torch.dtype, device: str) -> Pipeline:
     """Creates a Hugging Face automatic-speech-recognition pipeline on the given device."""
@@ -43,21 +45,24 @@ def build_pipeline(model_id: str, torch_dtype: torch.dtype, device: str) -> Pipe
         device=device,
     )
     return pipe
-    
+
+
 client: Client = Client(
     host="http://ai.dfec.xyz:11434"  # Change this to be the URL of your LLM
 )
 
+
 class Place(BaseModel):
     place: str
     point: bool
+
 
 def llm_parse_for_wttr(prompt: str):
     response = client.chat(
         messages=[
             {
                 "role": "system",
-                "content": '''
+                "content": """
                 Your purpose is to extract the intended location from the user's weather request.
                 The request is transcribed from speech by a different AI model and may contain errors.
                 Take your time to ensure correct response. Place the extracted location into `place` as a string.
@@ -79,19 +84,22 @@ def llm_parse_for_wttr(prompt: str):
                 
                 The transcription model may add extraneous punctuation into spoken airport codes. For instance, 
                 "BKK" is sometimes transcribed as "BK.K." Look for occurences of similar errors and correct them.
-                '''
+                """,
             },
             {"role": "user", "content": prompt},
         ],
         model=LLM_MODEL,
-        format=Place.model_json_schema()
-    )        
+        format=Place.model_json_schema(),
+    )
     place = Place.model_validate_json(response.message.content)
-    
-    if place.point and not (place.place.upper() == place.place and len(place.place) == 3):
+
+    if place.point and not (
+        place.place.upper() == place.place and len(place.place) == 3
+    ):
         place.place = "~" + place.place
-    
+
     return place.place.replace(" ", "+")
+
 
 if __name__ == "__main__":
     model_id = "distil-whisper/distil-medium.en"
@@ -106,17 +114,17 @@ if __name__ == "__main__":
     print("Ready")
 
     while True:
-        #print("Recording")
+        # print("Recording")
         audio = record_audio()
-        #print("Transcribing")
-        speech: Dict[str,str] = pipe(audio)
-        #print(speech)
+        # print("Transcribing")
+        speech: Dict[str, str] = pipe(audio)
+        # print(speech)
         if "computer" in speech["text"].lower():
-                print("Recording prompt")
-                speech = pipe(record_audio(5))
-                location = llm_parse_for_wttr(speech["text"])
-                try:
-                    wttr = requests.get("https://wttr.in/" + location)
-                    print(wttr.text)
-                except:
-                    print("There was an error in retrieving weather data.")
+            print("Recording prompt")
+            speech = pipe(record_audio(5))
+            location = llm_parse_for_wttr(speech["text"])
+            try:
+                wttr = requests.get("https://wttr.in/" + location)
+                print(wttr.text)
+            except:
+                print("There was an error in retrieving weather data.")

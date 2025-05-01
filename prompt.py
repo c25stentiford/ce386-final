@@ -8,17 +8,19 @@ client: Client = Client(
     host="http://ai.dfec.xyz:11434"  # Change this to be the URL of your LLM
 )
 
+
 class Place(BaseModel):
     place: str
     point: bool
     error: str
+
 
 def llm_parse_for_wttr(prompt: str):
     response = client.chat(
         messages=[
             {
                 "role": "system",
-                "content": '''
+                "content": """
                 Your purpose is to extract the intended location from the user's weather request.
                 Take your time to ensure correct response. Place the extracted location into `place` as a string.
                 
@@ -39,21 +41,23 @@ def llm_parse_for_wttr(prompt: str):
                 
                 If for whatever reason you are unable to comply with instructions above, explain
                 yourself in a brief manner using `error`. Otherwise, set `error` to a blank string.
-                '''
+                """,
             },
             {"role": "user", "content": prompt},
         ],
         model=LLM_MODEL,
-        format=Place.model_json_schema()
-    )        
+        format=Place.model_json_schema(),
+    )
     place = Place.model_validate_json(response.message.content)
-    
+
     # if len(place.error) > 0:
     print(place.error)
-    
-    if place.point and not (place.place.upper() == place.place and len(place.place) == 3):
+
+    if place.point and not (
+        place.place.upper() == place.place and len(place.place) == 3
+    ):
         place.place = "~" + place.place
-    
+
     return place.place.replace(" ", "+")
 
 
@@ -65,9 +69,13 @@ test_cases = [
     {"input": "Get the weather at MCI.", "expected": "MCI"},
     {"input": "What's the weather at DMK?", "expected": "DMK"},
     {"input": "Tell me the weather in Lansing, Kansas.", "expected": "Lansing,+Kansas"},
-    {"input": "What's the weather in Fukuoka Prefecture?", "expected": "Fukuoka+Prefecture"},
-    {"input": "What's the weather at Kokura Station?", "expected": "~Kokura+Station"}
+    {
+        "input": "What's the weather in Fukuoka Prefecture?",
+        "expected": "Fukuoka+Prefecture",
+    },
+    {"input": "What's the weather at Kokura Station?", "expected": "~Kokura+Station"},
 ]
+
 
 def run_tests(test_cases: list[dict[str, str]]):
     """run_tests iterates through a list of dictionaries,
@@ -96,5 +104,6 @@ def run_tests(test_cases: list[dict[str, str]]):
             print("💥 ERROR:", e)
 
     print(f"\nSummary: {num_passed} / {len(test_cases)} tests passed.")
-    
+
+
 run_tests(test_cases=test_cases)
